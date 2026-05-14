@@ -1,19 +1,36 @@
 """
-API FastAPI - Expose les métriques du pipeline Vélib Lakehouse et les insights données.
+API FastAPI — Expose les métriques du pipeline Vélib Lakehouse et les insights données.
 
-Section 1 — Pipeline Monitor : statut et métriques d'exécution via Dagster GraphQL
-Section 2 — Vélib Insights : métriques données via DuckDB + MinIO
+Sécurité :
+- API Key via header X-API-Key sur tous les endpoints de données
+- HTTP Basic Auth sur /docs
 """
-
 import os
+import secrets
 from datetime import date
 import duckdb
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
 from src.config import BUCKET
 
-app = FastAPI(title="Vélib Lakehouse API")
+# --- Configuration ---
+MINIO_ENDPOINT = os.getenv("S3_ENDPOINT_URL", "http://minio:9000").replace("https://", "").replace("http://", "")
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+DAGSTER_URL = os.getenv("DAGSTER_URL")
+API_KEY = os.getenv("API_KEY")
+DOCS_USER = os.getenv("DOCS_USER")
+DOCS_PASSWORD = os.getenv("DOCS_PASSWORD")
+
+# --- App ---
+app = FastAPI(
+    title="Vélib Lakehouse API",
+    docs_url=None,
+    redoc_url=None,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,14 +39,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Configuration ---
-MINIO_ENDPOINT = os.getenv("S3_ENDPOINT_URL").replace("https://", "").replace("http://", "")
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-DAGSTER_URL = os.getenv("DAGSTER_URL")
+# --- Sécurité API Key ---
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+
+async def verify_api_key(key: str = Security(api_key_header)):
+    """Vérifie que le header X-API-Key est valide."""
+    if not API_KEY or not secrets.compare_digest(key, API_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid API Key",
+        )
+
+# --- Sécurité HTTP Basic Auth pour /docs ---
+basic_security = HTTPBasic()
+
+def verify_docs_credentials(credentials: HTTPBasicCredentials = Depends(basic_security)):
+    """Vérifie les credentials pour accéder à /docs."""
+    correct_user = secrets.compare_digest(credentials.username, DOCS_USER)
+    correct_pass = secrets.compare_digest(credentials.password, DOCS_PASSWORD or "")
+    if not (correct_user and correct_pass):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+# --- Route /docs protégée ---
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger(credentials: HTTPBasicCredentials = Depends(verify_docs_credentials)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Vélib Lakehouse API")
 
 
-# --- Helpers ---
+# --- Helpers DuckDB et Dagster ---
 
 def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
     """Crée une connexion DuckDB configurée pour lire depuis MinIO."""
@@ -58,12 +99,9 @@ async def query_dagster_graphql(query: str) -> dict:
 # SECTION 1 — PIPELINE MONITOR
 # =============================================================================
 
-@app.get("/pipeline/status")
+@app.get("/pipeline/status", dependencies=[Depends(verify_api_key)])
 async def get_pipeline_status():
-    """
-    Statut de la dernière exécution par asset (Bronze / Silver / Gold).
-    Source : Dagster GraphQL API.
-    """
+    """Statut de la dernière exécution par asset (Bronze / Silver / Gold)."""
     query = """
     {
       runsOrError(filter: {pipelineName: "velib_pipeline_job"}, limit: 10) {
@@ -96,7 +134,6 @@ async def get_pipeline_status():
         if latest_run.get("startTime") and latest_run.get("endTime"):
             duration = round(latest_run["endTime"] - latest_run["startTime"], 1)
 
-        # Statut par asset
         assets_status = {}
         for step in latest_run.get("stepStats", []):
             key = step["stepKey"].replace("_1", "")
@@ -118,29 +155,23 @@ async def get_pipeline_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/pipeline/metrics")
+@app.get("/pipeline/metrics", dependencies=[Depends(verify_api_key)])
 async def get_pipeline_metrics():
-    """
-    Métriques du pipeline : snapshots Bronze aujourd'hui, stations ingérées.
-    Source : DuckDB + MinIO.
-    """
+    """Métriques du pipeline : snapshots Bronze aujourd'hui, stations ingérées."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
 
-        # Nb de snapshots Bronze aujourd'hui
         snapshots = con.execute(f"""
             SELECT COUNT(*) as count
             FROM glob('s3://{BUCKET}/bronze/velib/date={today}/*.parquet')
         """).fetchone()[0]
 
-        # Nb de stations ingérées dans le dernier snapshot
         stations = con.execute(f"""
             SELECT COUNT(*) as count
             FROM read_parquet('s3://{BUCKET}/bronze/velib/date={today}/*.parquet')
         """).fetchone()[0]
 
-        # Nb de lignes Silver aujourd'hui
         silver_rows = con.execute(f"""
             SELECT COUNT(*) as count
             FROM read_parquet('s3://{BUCKET}/silver/velib/velib_silver.parquet')
@@ -161,12 +192,9 @@ async def get_pipeline_metrics():
 # SECTION 2 — VÉLIB INSIGHTS
 # =============================================================================
 
-@app.get("/velib/summary")
+@app.get("/velib/summary", dependencies=[Depends(verify_api_key)])
 async def get_velib_summary():
-    """
-    Métriques globales Vélib : total vélos, répartition mécanique/électrique.
-    Source : dernier snapshot Silver.
-    """
+    """Métriques globales Vélib : total vélos, répartition mécanique/électrique."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
@@ -204,12 +232,9 @@ async def get_velib_summary():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/velib/at-risk")
+@app.get("/velib/at-risk", dependencies=[Depends(verify_api_key)])
 async def get_stations_at_risk():
-    """
-    Top stations à risque de vidage dans les 30 prochaines minutes.
-    Source : Gold velib_stations_at_risk.
-    """
+    """Top stations à risque de vidage dans les 30 prochaines minutes."""
     try:
         con = get_duckdb_connection()
 
@@ -244,12 +269,9 @@ async def get_stations_at_risk():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/velib/top-depletion")
+@app.get("/velib/top-depletion", dependencies=[Depends(verify_api_key)])
 async def get_top_depletion():
-    """
-    Top 5 stations qui se vident le plus vite en ce moment.
-    Source : Silver — dernier snapshot avec depletion_rate négatif.
-    """
+    """Top 5 stations qui se vident le plus vite en ce moment."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
@@ -292,5 +314,5 @@ async def get_top_depletion():
 
 @app.get("/health")
 async def health():
-    """Endpoint de santé — vérifie que l'API répond."""
+    """Endpoint de santé — pas d'auth requise."""
     return {"status": "ok"}
