@@ -1,0 +1,34 @@
+[project]
+name = "velib_lakehouse"
+version = "0.1.0"
+description = "Pipeline lakehouse medallion sur les données Vélib Paris"
+readme = "README.md"
+authors = [{ name = "Julien Castellano" }]
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv",
+    "loguru"
+]
+
+[project.scripts]
+"velib_lakehouse" = "src.main:main"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "ruff"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # Erreurs de style (pycodestyle)
+    "F",   # Erreurs logiques (pyflakes)
+    "I",   # Tri des imports (isort)
+    "UP",  # Alerte syntaxe Python périmée
+    "B",   # Détecte les bugs potentiels (flake8-bugbear)
+]
+fixable = ["ALL"] # Autorise ruff à corriger automatiquement tout ce qu'il peut
