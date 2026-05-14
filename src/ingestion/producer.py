@@ -76,7 +76,7 @@ def run(fs: s3fs.S3FileSystem | None = None) -> str:
 def run_reference(fs: s3fs.S3FileSystem | None = None) -> tuple[str, int]:
     """Pipeline Bronze — données de référence des stations (noms, capacités)."""
     filesystem = _build_filesystem(fs)
-    payload = fetch_json(VELIB_REFERENCE_URL)
+    payload = fetch_json(VELIB_REFERENCE_URL, headers=VELIB_HEADERS)
     stations = payload.get("data", {}).get("stations", [])
     if not stations:
         raise ValueError("Données de référence vides !")
