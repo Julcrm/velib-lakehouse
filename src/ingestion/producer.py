@@ -58,6 +58,17 @@ def run(fs: s3fs.S3FileSystem | None = None) -> str:
     records = fetch_json(VELIB_API_URL, headers=VELIB_HEADERS)
     df = pd.json_normalize(records)
     df["ingested_at"] = datetime.now()
+
+    # Normalise les coordonnées — l'API peut retourner les deux formats
+    if "coordonnees_geo" in df.columns and "coordonnees_geo.lon" not in df.columns:
+        df["coordonnees_geo.lon"] = df["coordonnees_geo"].apply(
+            lambda x: x.get("lon") if isinstance(x, dict) else None
+        )
+        df["coordonnees_geo.lat"] = df["coordonnees_geo"].apply(
+            lambda x: x.get("lat") if isinstance(x, dict) else None
+        )
+        df = df.drop(columns=["coordonnees_geo"])
+
     now = datetime.now()
     path = f"{BUCKET}/bronze/velib/date={now.strftime('%Y-%m-%d')}/{now.strftime('%H-%M-%S')}.parquet"
     return write_parquet(df, path, filesystem)
