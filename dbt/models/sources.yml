@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: main
+    tables:
+      - name: velib_bronze
+        description: "Snapshots bruts des stations Vélib depuis l'API Open Data Paris"
+        external:
+          location: "s3://velib-lakehouse/bronze/velib/**/*.parquet"
+          options:
+            format: parquet

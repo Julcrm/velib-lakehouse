@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  - name: velib_stations_at_risk
+    description: "Stations à risque de vidage dans les 30 prochaines minutes"
+  - name: velib_stats_arrondissement
+    description: "Statistiques agrégées par arrondissement"

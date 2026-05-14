@@ -1,0 +1,15 @@
+name: velib_lakehouse
+version: 1.0.0
+profile: velib_lakehouse
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  velib_lakehouse:
+    silver:
+      +materialized: external
+      +external_location: "s3://velib-lakehouse/silver/velib/{{ model.name }}.parquet"
+    gold:
+      +materialized: external
+      +external_location: "s3://velib-lakehouse/gold/velib/{{ model.name }}.parquet"

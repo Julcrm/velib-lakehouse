@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: velib_silver
+    description: "Données Vélib nettoyées avec vitesse de vidage par station"
+    columns:
+      - name: station_code
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+      - name: bikes_available
+        description: "Nombre de vélos disponibles"
+        tests:
+          - not_null
+      - name: depletion_rate_per_minute
+        description: "Vélos perdus/gagnés par minute (négatif = vidage)"

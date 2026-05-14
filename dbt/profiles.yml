@@ -1,0 +1,14 @@
+velib_lakehouse:
+  target: prod
+  outputs:
+    prod:
+      type: duckdb
+      path: ":memory:"
+      extensions:
+        - httpfs
+      settings:
+        s3_endpoint: "{{ env_var('S3_ENDPOINT_URL') | replace('http://', '') }}"
+        s3_access_key_id: "{{ env_var('AWS_ACCESS_KEY_ID') }}"
+        s3_secret_access_key: "{{ env_var('AWS_SECRET_ACCESS_KEY') }}"
+        s3_use_ssl: false
+        s3_url_style: path
