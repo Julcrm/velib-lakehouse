@@ -1,6 +1,3 @@
-# velib-lakehouse/docker-compose.yml
-version: "3.8"
-
 services:
   velib-lakehouse:
     build: .
@@ -8,13 +5,23 @@ services:
     expose:
       - "4000"
     environment:
-      - DAGSTER_HOME=/opt/dagster/dagster_home
-    env_file:
-      - .env
+      DAGSTER_HOME: /opt/dagster/dagster_home
+      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
+      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY}'
+      S3_ENDPOINT_URL: '${S3_ENDPOINT_URL}'
+      BUCKET: '${BUCKET}'
+    volumes:
+      - dagster_home:/opt/dagster/dagster_home
     networks:
       - coolify
+    restart: always
 
 networks:
   coolify:
     external: true
     name: coolify
+
+volumes:
+  dagster_home:
+    external: true
+    name: dagster-workspace_dagster_home
