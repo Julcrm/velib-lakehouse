@@ -14,9 +14,7 @@ from loguru import logger
 from src.config import (
     BUCKET,
     VELIB_API_URL,
-    VELIB_HEADERS,
-    VELIB_PARAMS,
-    VELIB_REFERENCE_URL,
+    VELIB_HEADERS
 )
 
 
@@ -63,25 +61,13 @@ def _build_filesystem(fs: s3fs.S3FileSystem | None) -> s3fs.S3FileSystem:
 def run(fs: s3fs.S3FileSystem | None = None) -> str:
     """Pipeline Bronze — snapshot statut des stations Vélib."""
     filesystem = _build_filesystem(fs)
-    records = fetch_json(VELIB_API_URL, headers=VELIB_HEADERS, params=VELIB_PARAMS)
+    records = fetch_json(VELIB_API_URL, headers=VELIB_HEADERS)
     df = pd.json_normalize(records)
     df["ingested_at"] = datetime.now()
     now = datetime.now()
     path = f"{BUCKET}/bronze/velib/date={now.strftime('%Y-%m-%d')}/{now.strftime('%H-%M-%S')}.parquet"
     return write_parquet(df, path, filesystem)
 
-
-# --- Pipeline référence stations ---
-
-def run_reference(fs: s3fs.S3FileSystem | None = None) -> tuple[str, int]:
-    """Pipeline Bronze — données de référence des stations (noms, capacités)."""
-    filesystem = _build_filesystem(fs)
-    payload = fetch_json(VELIB_REFERENCE_URL, headers=VELIB_HEADERS)
-    stations = payload.get("data", {}).get("stations", [])
-    if not stations:
-        raise ValueError("Données de référence vides !")
-    path = f"{BUCKET}/bronze/velib/reference/station_information.json"
-    return write_json(payload, path, filesystem), len(stations)
 
 
 if __name__ == "__main__":

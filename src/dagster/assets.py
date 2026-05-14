@@ -9,7 +9,6 @@ import dagster as dg
 from loguru import logger
 
 from src.ingestion.producer import run as run_producer
-from src.ingestion.producer import run_reference as run_reference_producer
 from src.resources.minio import MinioResource
 
 
@@ -22,18 +21,9 @@ def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.
     return dg.MaterializeResult(metadata={"path": path})
 
 
-@dg.asset(group_name="bronze", description="Données de référence des stations Vélib (noms, capacités).")
-def velib_reference_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.MaterializeResult:
-    """Étape 1b — Ingestion : données de référence GBFS → MinIO Bronze."""
-    fs = minio.get_filesystem()
-    path, count = run_reference_producer(fs=fs)
-    context.log.info(f"{count} stations de référence ingérées → {path}")
-    return dg.MaterializeResult(metadata={"path": path, "station_count": count})
-
-
 @dg.asset(
     group_name="silver",
-    deps=[velib_bronze, velib_reference_bronze],
+    deps=[velib_bronze],
     description="Transformation dbt : Bronze → Silver (nettoyage, typage, dédoublonnage).",
 )
 def velib_silver(context: dg.AssetExecutionContext) -> None:

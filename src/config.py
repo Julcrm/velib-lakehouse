@@ -6,12 +6,7 @@ import os
 
 # --- API Vélib Open Data Paris ---
 VELIB_API_URL = (
-    "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/station_status.json"
-)
-
-# --- API Vélib Open Data Paris (données de référence stations) ---
-VELIB_REFERENCE_URL = (
-    "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/station_information.json"
+    "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/velib-disponibilite-en-temps-reel/exports/json"
 )
 
 VELIB_HEADERS = {
@@ -21,7 +16,6 @@ VELIB_HEADERS = {
         "Chrome/120.0.0.0 Safari/537.36"
     )
 }
-VELIB_PARAMS = {"limit": -1}
 
 # --- MinIO / S3 ---
 BUCKET = os.getenv("BUCKET", "velib-lakehouse")
