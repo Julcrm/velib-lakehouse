@@ -18,6 +18,8 @@ dependencies = [
     "dagster",
     "dagster-webserver",
     "dagster-postgres>=0.29.4",
+    "dbt-core>=1.11.10",
+    "dbt-duckdb>=1.10.1",
 ]
 
 [project.scripts]

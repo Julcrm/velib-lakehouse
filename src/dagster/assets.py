@@ -24,36 +24,36 @@ def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.
 @dg.asset(
     group_name="silver",
     deps=[velib_bronze],
-    description="Transformation dbt : Bronze → Silver (nettoyage, typage, dédoublonnage).",
+    description="Transformation dbt : Bronze → Silver.",
 )
 def velib_silver(context: dg.AssetExecutionContext) -> None:
-    """Étape 2 — Transformation : exécute les modèles dbt Silver."""
     result = subprocess.run(
-        ["dbt", "run", "--select", "silver"],
+        ["uv", "run", "dbt", "run", "--select", "silver"],
         capture_output=True,
         text=True,
-        cwd="dbt",
+        cwd="/opt/dagster/app/dbt",
     )
     if result.returncode != 0:
-        logger.error(result.stderr)
+        context.log.error(result.stderr)
         raise RuntimeError("dbt run (silver) a échoué.")
+    context.log.info(result.stdout)
     context.log.info("dbt silver terminé.")
 
 
 @dg.asset(
     group_name="gold",
     deps=[velib_silver],
-    description="Agrégation dbt : Silver → Gold (métriques, alertes).",
+    description="Agrégation dbt : Silver → Gold.",
 )
 def velib_gold(context: dg.AssetExecutionContext) -> None:
-    """Étape 3 — Agrégation : exécute les modèles dbt Gold."""
     result = subprocess.run(
-        ["dbt", "run", "--select", "gold"],
+        ["uv", "run", "dbt", "run", "--select", "gold"],
         capture_output=True,
         text=True,
-        cwd="dbt",
+        cwd="/opt/dagster/app/dbt",
     )
     if result.returncode != 0:
-        logger.error(result.stderr)
+        context.log.error(result.stderr)
         raise RuntimeError("dbt run (gold) a échoué.")
+    context.log.info(result.stdout)
     context.log.info("dbt gold terminé.")
