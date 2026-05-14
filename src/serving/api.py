@@ -163,26 +163,23 @@ async def get_pipeline_metrics():
         today = date.today().isoformat()
 
         snapshots = con.execute(f"""
-            SELECT COUNT(*) as count
+            SELECT COUNT(*)
             FROM glob('s3://{BUCKET}/bronze/velib/date={today}/*.parquet')
         """).fetchone()[0]
 
-        stations = con.execute(f"""
-            SELECT COUNT(*) as count
+        stations_per_snapshot = con.execute(f"""
+            SELECT COUNT(DISTINCT stationcode)
             FROM read_parquet('s3://{BUCKET}/bronze/velib/date={today}/*.parquet')
-        """).fetchone()[0]
-
-        silver_rows = con.execute(f"""
-            SELECT COUNT(*) as count
-            FROM read_parquet('s3://{BUCKET}/silver/velib/velib_silver.parquet')
-            WHERE date = '{today}'
+            WHERE ingested_at = (
+                SELECT MAX(ingested_at)
+                FROM read_parquet('s3://{BUCKET}/bronze/velib/date={today}/*.parquet')
+            )
         """).fetchone()[0]
 
         return {
             "date": today,
             "bronze_snapshots_today": snapshots,
-            "stations_ingested": stations,
-            "silver_rows_today": silver_rows,
+            "stations_per_snapshot": stations_per_snapshot,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
