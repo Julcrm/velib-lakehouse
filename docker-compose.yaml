@@ -2,7 +2,9 @@ version: "3.8"
 
 services:
   velib-lakehouse:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/dagster/Dockerfile
     container_name: velib-lakehouse
     expose:
       - "4000"
@@ -19,14 +21,15 @@ services:
     networks:
       - coolify
     restart: always
+
   velib-api:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
     container_name: velib-api
-    command: uv run uvicorn src.serving.api:app --host 0.0.0.0 --port 8000
-    ports:
-      - "8001:8000"
+    expose:
+      - "8000"
     environment:
-      - DAGSTER_HOME=/opt/dagster/dagster_home
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
