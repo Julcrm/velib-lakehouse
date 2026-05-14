@@ -1,6 +1,11 @@
 -- Couche Silver — nettoyage, typage et enrichissement des données Vélib
 -- Calcule la vitesse de vidage par station via window function LAG
 
+{{ config(
+    materialized='external',
+    location='s3://velib-lakehouse/silver/velib/velib_silver.parquet'
+) }}
+
 WITH source AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/bronze/velib/**/*.parquet')
 ),

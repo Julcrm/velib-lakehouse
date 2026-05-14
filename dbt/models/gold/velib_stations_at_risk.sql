@@ -1,6 +1,11 @@
 -- Couche Gold — stations à risque de vidage imminent
 -- Une station est à risque si son taux de vidage prédit un stock nul dans moins de 30 minutes
 
+{{ config(
+    materialized='external',
+    location='s3://velib-lakehouse/gold/velib/velib_stations_at_risk.parquet'
+) }}
+
 WITH silver AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/silver/velib/velib_silver.parquet')
     WHERE date = current_date

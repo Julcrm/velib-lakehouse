@@ -1,6 +1,11 @@
 -- Couche Gold — statistiques agrégées par arrondissement
 -- Snapshot le plus récent de chaque station, agrégé par arrondissement
 
+{{ config(
+    materialized='external',
+    location='s3://velib-lakehouse/gold/velib/velib_stats_arrondissement.parquet'
+) }}
+
 WITH silver AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/silver/velib/velib_silver.parquet')
     WHERE date = current_date
