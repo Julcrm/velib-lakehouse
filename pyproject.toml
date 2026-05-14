@@ -17,6 +17,7 @@ dependencies = [
     "duckdb",
     "dagster",
     "dagster-webserver",
+    "dagster-postgres>=0.29.4",
 ]
 
 [project.scripts]

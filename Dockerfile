@@ -14,6 +14,7 @@ COPY pyproject.toml uv.lock ./
 # Installe les dépendances sans les dev dependencies
 RUN uv sync --frozen --no-dev
 
+COPY dagster.yaml $DAGSTER_HOME/dagster.yaml
 COPY . .
 
 EXPOSE 4000
