@@ -2,17 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /opt/dagster/app
 
-# Installe uv
+ENV PYTHONPATH=/opt/dagster/app
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Copie les fichiers de dépendances en premier pour le cache Docker
 COPY pyproject.toml uv.lock ./
-
-# Installe les dépendances sans les dev dependencies
 RUN uv sync --frozen --no-dev
 
-# Copie le code source
-COPY ../../src/serving .
+COPY . .
 
 EXPOSE 8000
 
