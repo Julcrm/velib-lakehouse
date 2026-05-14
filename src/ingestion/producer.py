@@ -1,53 +1,48 @@
 """
-Ingestion des données Vélib depuis l'API Open Data Paris.
-Écrit les snapshots bruts en Parquet sur MinIO (couche Bronze).
+Ingestion des données Vélib depuis les APIs open data.
+Écrit les snapshots bruts sur MinIO (couche Bronze).
 """
+import json
 import os
 from datetime import datetime
 
 import pandas as pd
 import requests
 import s3fs
-from dotenv import load_dotenv
 from loguru import logger
 
-load_dotenv()
-
-VELIB_API_URL = (
-    "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets"
-    "/velib-disponibilite-en-temps-reel/exports/json"
+from src.config import (
+    BUCKET,
+    VELIB_API_URL,
+    VELIB_HEADERS,
+    VELIB_PARAMS,
+    VELIB_REFERENCE_URL,
 )
-# Headers "ninja" — évite le blocage par l'API Open Data Paris
-VELIB_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-# Toutes les colonnes source — la sélection est déléguée à dbt (couche Silver)
-VELIB_PARAMS = {
-    "limit": -1,
-}
-BUCKET = os.getenv("BUCKET", "velib-lakehouse")
 
 
-def fetch_velib_data() -> list[dict]:
-    """Étape 1 — Appeler l'API Vélib open data Paris (endpoint export, mode ninja)."""
-    logger.info("Fetching Vélib data from Open Data Paris API...")
-    response = requests.get(VELIB_API_URL, headers=VELIB_HEADERS, params=VELIB_PARAMS, timeout=30)
+# --- Fonctions génériques ---
+
+def fetch_json(url: str, headers: dict = None, params: dict = None) -> dict | list:
+    """Appel HTTP GET générique — retourne le JSON brut."""
+    response = requests.get(url, headers=headers, params=params, timeout=30)
     response.raise_for_status()
-    records = response.json()
-    logger.info(f"Fetched {len(records)} station records.")
-    return records
+    return response.json()
 
 
-def build_dataframe(records: list[dict]) -> pd.DataFrame:
-    """Étape 2 — Convertir la réponse JSON en DataFrame pandas."""
-    df = pd.json_normalize(records)
-    df["ingested_at"] = datetime.now()
-    logger.info(f"DataFrame built: {len(df)} rows, {len(df.columns)} columns.")
-    return df
+def write_parquet(df: pd.DataFrame, path: str, fs: s3fs.S3FileSystem) -> str:
+    """Écriture Parquet sur MinIO."""
+    with fs.open(path, "wb") as f:
+        df.to_parquet(f, index=False)
+    logger.info(f"Written to s3://{path}")
+    return path
+
+
+def write_json(payload: dict, path: str, fs: s3fs.S3FileSystem) -> str:
+    """Écriture JSON sur MinIO."""
+    with fs.open(path, "w") as f:
+        json.dump(payload, f)
+    logger.info(f"Written to s3://{path}")
+    return path
 
 
 def _build_filesystem(fs: s3fs.S3FileSystem | None) -> s3fs.S3FileSystem:
@@ -63,22 +58,30 @@ def _build_filesystem(fs: s3fs.S3FileSystem | None) -> s3fs.S3FileSystem:
     )
 
 
-def write_to_bronze(df: pd.DataFrame, fs: s3fs.S3FileSystem | None = None) -> str:
-    """Étape 3 — Écrire en Parquet sur MinIO bucket bronze."""
-    filesystem = _build_filesystem(fs)
-    now = datetime.now()
-    path = f"{BUCKET}/bronze/velib/date={now.strftime('%Y-%m-%d')}/{now.strftime('%H-%M-%S')}.parquet"
-    with filesystem.open(path, "wb") as f:
-        df.to_parquet(f, index=False)
-    logger.info(f"Written to s3://{path}")
-    return path
-
+# --- Pipeline statut stations ---
 
 def run(fs: s3fs.S3FileSystem | None = None) -> str:
-    """Point d'entrée du producteur — enchaîne les 3 étapes. fs optionnel pour l'injection Dagster."""
-    records = fetch_velib_data()
-    df = build_dataframe(records)
-    return write_to_bronze(df, fs=fs)
+    """Pipeline Bronze — snapshot statut des stations Vélib."""
+    filesystem = _build_filesystem(fs)
+    records = fetch_json(VELIB_API_URL, headers=VELIB_HEADERS, params=VELIB_PARAMS)
+    df = pd.json_normalize(records)
+    df["ingested_at"] = datetime.now()
+    now = datetime.now()
+    path = f"{BUCKET}/bronze/velib/date={now.strftime('%Y-%m-%d')}/{now.strftime('%H-%M-%S')}.parquet"
+    return write_parquet(df, path, filesystem)
+
+
+# --- Pipeline référence stations ---
+
+def run_reference(fs: s3fs.S3FileSystem | None = None) -> tuple[str, int]:
+    """Pipeline Bronze — données de référence des stations (noms, capacités)."""
+    filesystem = _build_filesystem(fs)
+    payload = fetch_json(VELIB_REFERENCE_URL)
+    stations = payload.get("data", {}).get("stations", [])
+    if not stations:
+        raise ValueError("Données de référence vides !")
+    path = f"{BUCKET}/bronze/velib/reference/station_information.json"
+    return write_json(payload, path, filesystem), len(stations)
 
 
 if __name__ == "__main__":
