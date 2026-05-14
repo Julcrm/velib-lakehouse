@@ -19,4 +19,4 @@ COPY . .
 
 EXPOSE 4000
 
-CMD ["uv", "run", "dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "src.dagster"]
+CMD ["uv", "run", "dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "src.dagster.definition"]
