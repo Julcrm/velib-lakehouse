@@ -210,23 +210,26 @@ async def get_velib_summary():
                 ) = 1
             )
             SELECT
-                COUNT(*)                    AS total_stations,
-                SUM(bikes_available)        AS total_bikes,
-                SUM(bikes_mechanical)       AS total_mechanical,
-                SUM(bikes_electric)         AS total_electric,
-                SUM(docks_available)        AS total_docks_available,
-                COUNT(*) FILTER (WHERE bikes_available = 0) AS empty_stations
+                COUNT(*)                                                        AS total_stations,
+                COUNT(*) FILTER (WHERE NOT is_renting OR NOT is_returning)      AS inactive_stations,
+                COUNT(*) FILTER (WHERE bikes_available = 0 AND is_renting)      AS empty_stations,
+                SUM(bikes_available)                                            AS total_bikes,
+                SUM(bikes_mechanical)                                           AS total_mechanical,
+                SUM(bikes_electric)                                             AS total_electric,
+                SUM(docks_available)                                            AS total_docks_available
             FROM latest
         """).fetchone()
 
         return {
             "total_stations": result[0],
-            "total_bikes": result[1],
-            "total_mechanical": result[2],
-            "total_electric": result[3],
-            "total_docks_available": result[4],
-            "empty_stations": result[5],
-            "pct_electric": round(result[3] / result[1] * 100, 1) if result[1] else 0,
+            "active_stations": result[0] - result[1],
+            "inactive_stations": result[1],
+            "empty_stations": result[2],
+            "total_bikes": result[3],
+            "total_mechanical": result[4],
+            "total_electric": result[5],
+            "total_docks_available": result[6],
+            "pct_electric": round(result[5] / result[3] * 100, 1) if result[3] else 0,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
