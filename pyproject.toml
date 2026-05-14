@@ -7,7 +7,16 @@ authors = [{ name = "Julien Castellano" }]
 requires-python = ">=3.11"
 dependencies = [
     "python-dotenv",
-    "loguru"
+    "loguru",
+    "requests",
+    "pandas",
+    "pyarrow",
+    "s3fs",
+    "fastapi",
+    "uvicorn",
+    "duckdb",
+    "dagster",
+    "dagster-webserver",
 ]
 
 [project.scripts]

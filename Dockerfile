@@ -1,16 +1,15 @@
-
 FROM python:3.11-slim
 
-# On installe uv depuis l'image officielle
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+WORKDIR /opt/dagster/app
 
-WORKDIR /app
+ENV DAGSTER_HOME=/opt/dagster/dagster_home
+RUN mkdir -p $DAGSTER_HOME
 
-# Optimisation du cache
-COPY pyproject.toml uv.lock ./
-# Installation sans dev dependencies
-RUN uv sync --frozen --no-dev
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir dagster dagster-webserver requests pandas pyarrow s3fs fastapi uvicorn duckdb
 
 COPY . .
 
-CMD ["uv", "run", "src/main.py"]
+EXPOSE 4000
+
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "src.dagster"]
