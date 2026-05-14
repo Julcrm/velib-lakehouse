@@ -1,62 +1,20 @@
+# velib-lakehouse/docker-compose.yml
+version: "3.8"
+
 services:
-  # --- SERVICE 1 : DAGSTER WEBSERVER + DAEMON ---
-  dagster-platform:
+  velib-lakehouse:
     build: .
-    restart: always
-    ports:
-      - '3000:3000'
+    container_name: velib-lakehouse
+    expose:
+      - "4000"
     environment:
-      DAGSTER_POSTGRES_USER: '${DAGSTER_POSTGRES_USER}'
-      DAGSTER_POSTGRES_PASSWORD: '${DAGSTER_POSTGRES_PASSWORD}'
-      DAGSTER_POSTGRES_DB: '${DAGSTER_POSTGRES_DB}'
-      DAGSTER_POSTGRES_HOST: '${DAGSTER_POSTGRES_HOST}'
-      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
-      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY}'
-      S3_ENDPOINT_URL: '${S3_ENDPOINT_URL}'
-      GRPC_DNS_RESOLVER: native
-    volumes:
-      - 'dagster_home:/opt/dagster/dagster_home'
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+    env_file:
+      - .env
     networks:
       - coolify
-    command: >
-      sh -c "uv run dagster-webserver -h 0.0.0.0 -p 3000 -w workspace.yaml & uv run dagster-daemon run -w workspace.yaml"
-
-  # --- SERVICE 2 : DAGSTER GRPC WORKER ---
-  velib-worker:
-    build: .
-    restart: always
-    ports:
-      - "4000:4000"
-    environment:
-      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
-      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY}'
-      S3_ENDPOINT_URL: '${S3_ENDPOINT_URL}'
-      DAGSTER_POSTGRES_USER: '${DAGSTER_POSTGRES_USER}'
-      DAGSTER_POSTGRES_PASSWORD: '${DAGSTER_POSTGRES_PASSWORD}'
-      DAGSTER_POSTGRES_DB: '${DAGSTER_POSTGRES_DB}'
-      DAGSTER_POSTGRES_HOST: '${DAGSTER_POSTGRES_HOST}'
-      PYTHONUNBUFFERED: "1"
-    networks:
-      - coolify
-    command: uv run dagster api grpc -h 0.0.0.0 -p 4000 -f src/dagster/assets.py
-
-  # --- SERVICE 3 : FASTAPI SERVING ---
-  api-serving:
-    build: .
-    restart: always
-    ports:
-      - "8001:8000"
-    environment:
-      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
-      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY}'
-      S3_ENDPOINT_URL: '${S3_ENDPOINT_URL}'
-    networks:
-      - coolify
-    command: uv run uvicorn src.serving.api:app --host 0.0.0.0 --port 8000
 
 networks:
   coolify:
     external: true
-
-volumes:
-  dagster_home:
+    name: coolify
