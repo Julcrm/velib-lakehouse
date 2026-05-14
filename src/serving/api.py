@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # --- Configuration ---
-MINIO_ENDPOINT = os.getenv("S3_ENDPOINT_URL")
+MINIO_ENDPOINT = os.getenv("S3_ENDPOINT_URL").replace("https://", "").replace("http://", "")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 DAGSTER_URL = os.getenv("DAGSTER_URL")
