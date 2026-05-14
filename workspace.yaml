@@ -4,4 +4,4 @@ load_from:
       port: 4000
       location_name: velib_lakehouse
       location_config:
-        module_name: src.dagster.definition
+        module_name: src.dagster.definitions
