@@ -5,17 +5,11 @@ Ingestion des données Vélib depuis les APIs open data.
 import json
 import os
 from datetime import datetime
-
 import pandas as pd
 import requests
 import s3fs
 from loguru import logger
-
-from src.config import (
-    BUCKET,
-    VELIB_API_URL,
-    VELIB_HEADERS
-)
+from src.config import BUCKET, VELIB_API_URL, VELIB_HEADERS
 
 
 # --- Fonctions génériques ---

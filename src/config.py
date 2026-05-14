@@ -17,5 +17,10 @@ VELIB_HEADERS = {
     )
 }
 
+# --- Rétention des données (jours) ---
+BRONZE_RETENTION_DAYS = 7
+SILVER_RETENTION_DAYS = 30
+GOLD_RETENTION_DAYS = 30
+
 # --- MinIO / S3 ---
 BUCKET = os.getenv("BUCKET", "velib-lakehouse")
