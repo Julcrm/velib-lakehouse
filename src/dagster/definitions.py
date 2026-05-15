@@ -8,11 +8,11 @@ AWS_ACCESS_KEY_ID et AWS_SECRET_ACCESS_KEY sont lues au démarrage.
 import os
 from dagster import Definitions
 from src.resources.minio import MinioResource
-from src.dagster.assets import velib_bronze, velib_silver, velib_gold, velib_cleanup, velib_schedule, velib_cleanup_schedule
+from src.dagster.assets import velib_bronze, velib_silver, velib_test, velib_gold, velib_cleanup, velib_schedule, velib_cleanup_schedule
 
 
 defs = Definitions(
-    assets=[velib_bronze, velib_silver, velib_gold, velib_cleanup],
+    assets=[velib_bronze, velib_silver, velib_test, velib_gold, velib_cleanup],
     schedules=[velib_schedule, velib_cleanup_schedule],
     resources={
         "minio": MinioResource(

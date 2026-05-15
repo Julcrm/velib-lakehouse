@@ -2,15 +2,35 @@ version: 2
 
 models:
   - name: velib_silver
-    description: "Données Vélib nettoyées avec vitesse de vidage par station"
+    description: "Données Vélib nettoyées avec taux d'utilisation par station"
     columns:
       - name: station_code
         description: "Identifiant unique de la station"
+        tests:
+          - not_null
+      - name: station_name
+        description: "Nom de la station"
         tests:
           - not_null
       - name: bikes_available
         description: "Nombre de vélos disponibles"
         tests:
           - not_null
+      - name: last_reported
+        description: "Timestamp de la dernière mise à jour de la station"
+        tests:
+          - not_null
+      - name: is_renting
+        description: "La station peut louer des vélos"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: is_returning
+        description: "La station peut recevoir des vélos"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
       - name: depletion_rate_per_minute
-        description: "Vélos perdus/gagnés par minute (négatif = vidage)"
+        description: "Vélos perdus/gagnés par minute — négatif = vidage, positif = remplissage"

@@ -168,11 +168,13 @@ async def get_pipeline_metrics():
         """).fetchone()[0]
 
         stations_per_snapshot = con.execute(f"""
-            SELECT COUNT(DISTINCT stationcode)
-            FROM read_parquet('s3://{BUCKET}/silver/velib/date={today}/*.parquet')
-            WHERE ingested_at = (
+            SELECT COUNT(DISTINCT station_code)
+            FROM read_parquet('s3://{BUCKET}/silver/velib/velib_silver.parquet')
+            WHERE date = '{today}'
+            AND ingested_at = (
                 SELECT MAX(ingested_at)
-                FROM read_parquet('s3://{BUCKET}/silver/velib/date={today}/*.parquet')
+                FROM read_parquet('s3://{BUCKET}/silver/velib/velib_silver.parquet')
+                WHERE date = '{today}'
             )
         """).fetchone()[0]
 

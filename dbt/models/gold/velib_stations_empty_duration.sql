@@ -13,7 +13,6 @@ WITH silver AS (
 ),
 
 last_with_bikes AS (
-    -- Dernier snapshot où la station avait des vélos
     SELECT
         station_code,
         MAX(last_reported) as last_seen_with_bikes

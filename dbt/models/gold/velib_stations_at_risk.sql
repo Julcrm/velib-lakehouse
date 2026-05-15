@@ -12,7 +12,6 @@ WITH silver AS (
 ),
 
 latest_snapshot AS (
-    -- Garde uniquement le dernier snapshot de chaque station
     SELECT *
     FROM silver
     QUALIFY ROW_NUMBER() OVER (
@@ -30,7 +29,6 @@ at_risk AS (
         longitude,
         bikes_available,
         depletion_rate_per_minute,
-        -- Minutes avant vidage estimé
         CASE
             WHEN depletion_rate_per_minute < 0
             THEN ROUND(bikes_available / ABS(depletion_rate_per_minute), 0)
