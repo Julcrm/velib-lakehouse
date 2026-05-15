@@ -80,7 +80,7 @@ def velib_cleanup(context: dg.AssetExecutionContext, minio: MinioResource) -> dg
     cron_schedule="*/10 * * * *",
     job=dg.define_asset_job(
         name="velib_pipeline_job",
-        selection=[velib_bronze, velib_silver, velib_test, velib_gold],
+        selection=[velib_bronze, velib_silver, velib_gold],
     ),
     description="Lance le pipeline Vélib complet toutes les 10 minutes.",
 )
