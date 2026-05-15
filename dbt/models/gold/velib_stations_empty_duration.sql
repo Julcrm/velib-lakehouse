@@ -23,13 +23,16 @@ last_with_bikes AS (
 ),
 
 currently_empty AS (
-    -- Stations actuellement vides (dernier snapshot)
-    SELECT station_code, station_name, arrondissement, last_reported
+    SELECT station_code, station_name, arrondissement, last_reported, bikes_available
     FROM silver
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY station_code
         ORDER BY last_reported DESC
     ) = 1
+),
+
+currently_empty_filtered AS (
+    SELECT * FROM currently_empty
     WHERE bikes_available = 0
 ),
 
@@ -41,7 +44,7 @@ final AS (
         l.last_seen_with_bikes,
         e.last_reported as checked_at,
         DATEDIFF('minute', l.last_seen_with_bikes, e.last_reported) as minutes_empty
-    FROM currently_empty e
+    FROM currently_empty_filtered e
     LEFT JOIN last_with_bikes l ON e.station_code = l.station_code
     WHERE l.last_seen_with_bikes IS NOT NULL
       AND DATEDIFF('minute', l.last_seen_with_bikes, e.last_reported) > 60
