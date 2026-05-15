@@ -3,7 +3,7 @@ velib_lakehouse:
   outputs:
     prod:
       type: duckdb
-      path: "/tmp/dbt.duckdb"
+      path: ":memory:"
       extensions:
         - httpfs
       settings:

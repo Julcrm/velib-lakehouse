@@ -27,7 +27,7 @@ def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.
 )
 def velib_silver(context: dg.AssetExecutionContext) -> None:
     result = subprocess.run(
-        ["uv", "run", "dbt", "run", "--select", "silver"],
+        ["uv", "run", "dbt", "build", "--select", "silver"],
         capture_output=True,
         text=True,
         cwd="/opt/dagster/app/dbt",
@@ -40,30 +40,8 @@ def velib_silver(context: dg.AssetExecutionContext) -> None:
 
 
 @dg.asset(
-    group_name="quality",
-    deps=[velib_silver],
-    description="Tests dbt de qualité des données Silver.",
-)
-def velib_test(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
-    """Étape 2b — Qualité : exécute les tests dbt sur le Silver."""
-    result = subprocess.run(
-        ["uv", "run", "dbt", "test", "--select", "velib_silver"],
-        capture_output=True,
-        text=True,
-        cwd="/opt/dagster/app/dbt",
-    )
-    context.log.info(result.stdout)
-    if result.returncode != 0:
-        context.log.error(result.stderr)
-        raise RuntimeError("dbt test a échoué — données Silver non conformes.")
-    return dg.MaterializeResult(
-        metadata={"tests_passed": True, "output": result.stdout}
-    )
-
-
-@dg.asset(
     group_name="gold",
-    deps=[velib_test],
+    deps=[velib_silver],
     description="Agrégation dbt : Silver → Gold.",
 )
 def velib_gold(context: dg.AssetExecutionContext) -> None:
