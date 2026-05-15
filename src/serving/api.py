@@ -311,6 +311,37 @@ async def get_top_depletion():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/velib/empty-duration", dependencies=[Depends(verify_api_key)])
+async def get_empty_duration():
+    """Stations vides depuis plus de 60 minutes sans réapprovisionnement."""
+    try:
+        con = get_duckdb_connection()
+        results = con.execute(f"""
+            SELECT
+                station_name,
+                arrondissement,
+                minutes_empty,
+                last_seen_with_bikes
+            FROM read_parquet('s3://{BUCKET}/gold/velib/velib_stations_empty_duration.parquet')
+            ORDER BY minutes_empty DESC
+            LIMIT 10
+        """).fetchall()
+
+        return {
+            "count": len(results),
+            "stations": [
+                {
+                    "station_name": r[0],
+                    "arrondissement": r[1],
+                    "minutes_empty": r[2],
+                    "last_seen_with_bikes": str(r[3]) if r[3] else None,
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/health")
 async def health():

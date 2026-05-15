@@ -2,6 +2,8 @@ version: 2
 
 models:
   - name: velib_stations_at_risk
-    description: "Stations à risque de vidage dans les 30 prochaines minutes"
+    description: "Stations qui risque d'être vide dans les 30 prochaines minutes"
   - name: velib_stats_arrondissement
     description: "Statistiques agrégées par arrondissement"
+  - name: velib_stations_empty_duration
+    description: "Stations actives vides depuis plus de 60 minutes sans réapprovisionnement"
