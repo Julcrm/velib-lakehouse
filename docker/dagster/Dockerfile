@@ -10,14 +10,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-# dbt deps — télécharge dbt_utils pendant le build
-COPY dbt/ /opt/dagster/app/dbt/
-WORKDIR /opt/dagster/app/dbt
-RUN uv run dbt deps --profiles-dir . --no-partial-parse 2>/dev/null || uv run dbt deps
-
-WORKDIR /opt/dagster/app
 COPY dagster.yaml $DAGSTER_HOME/dagster.yaml
 COPY . .
+
+RUN uv run dbt deps --project-dir /opt/dagster/app/dbt --profiles-dir /opt/dagster/app/dbt --no-partial-parse
 
 EXPOSE 4000
 
