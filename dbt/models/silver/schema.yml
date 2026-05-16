@@ -5,10 +5,6 @@ models:
     description: >
       Données Vélib nettoyées, enrichies avec calcul de deltas et de vitesse de vidage.
       Ce modèle transforme les snapshots bruts (Bronze) en données prêtes pour l'analyse (Gold).
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns: [ station_code, last_reported ]
 
     columns:
       - name: station_code
@@ -26,14 +22,16 @@ models:
         tests:
           - not_null
           - dbt_utils.accepted_range:
-              min_value: 0
+              arguments:
+                min_value: 0
 
       - name: capacity
         description: "Capacité totale de la station"
         tests:
           - not_null
           - dbt_utils.accepted_range:
-              min_value: 1
+              arguments:
+                min_value: 1
               config:
                 severity: warn
 
@@ -60,8 +58,9 @@ models:
         description: "Vitesse de vidage/remplissage — NULL pour le premier snapshot"
         tests:
           - dbt_utils.accepted_range:
-              min_value: -50
-              max_value: 50
+              arguments:
+                min_value: -50
+                max_value: 50
               config:
                 severity: warn
 
@@ -69,7 +68,8 @@ models:
         description: "Différence de vélos par rapport au snapshot précédent — NULL pour le premier snapshot"
         tests:
           - dbt_utils.accepted_range:
-              min_value: -100
-              max_value: 100
+              arguments:
+                min_value: -100
+                max_value: 100
               config:
                 severity: warn

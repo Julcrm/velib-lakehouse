@@ -43,6 +43,7 @@ cleaned AS (
     WHERE is_installed = 'OUI'
     AND stationcode IS NOT NULL
     AND name IS NOT NULL
+    AND capacity > 0
 ),
 
 with_delta AS (
