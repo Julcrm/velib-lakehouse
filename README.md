@@ -68,6 +68,9 @@ docker/
 # Lint
 uv run ruff check .
 
+# Unit tests (ingestion + API)
+uv run pytest tests/ -v
+
 # dbt data quality tests (Silver layer)
 cd dbt
 uv run dbt build --select silver
@@ -80,6 +83,7 @@ GitHub Actions runs on every push and pull request to `main` (`.github/workflows
 | Step | Command |
 |---|---|
 | Lint | `uv run ruff check .` |
+| Unit tests | `uv run pytest tests/ -v` |
 | Lock file integrity | `uv lock --check` |
 
 The `deploy` job (Coolify webhook) only triggers on push to `main` and is gated on the `lint` job passing.

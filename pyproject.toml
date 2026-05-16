@@ -26,10 +26,11 @@ dependencies = [
 [project.scripts]
 "velib_lakehouse" = "src.main:main"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
-    "ruff"
+    "ruff",
+    "httpx>=0.28.1",
 ]
 
 [tool.ruff]
