@@ -7,6 +7,7 @@ import os
 import requests
 
 import dagster as dg
+from src.dagster.assets import velib_cleanup_schedule, velib_schedule
 
 
 def send_failure_email(run_id: str, job_name: str, error: str) -> None:
@@ -38,7 +39,10 @@ def send_failure_email(run_id: str, job_name: str, error: str) -> None:
 
 
 @dg.run_failure_sensor(
-    monitored_jobs=["velib_pipeline_job", "velib_cleanup_job"]
+    monitored_jobs=[
+        velib_schedule.job,
+        velib_cleanup_schedule.job,
+    ]
 )
 def velib_failure_sensor(context: dg.RunFailureSensorContext):
     """Triggers on failure of velib_pipeline_job or velib_cleanup_job."""
