@@ -4,8 +4,9 @@ Monitors: velib_pipeline_job, velib_cleanup_job
 """
 import os
 
-import dagster as dg
 import requests
+
+import dagster as dg
 
 
 def send_failure_email(run_id: str, job_name: str, error: str) -> None:
