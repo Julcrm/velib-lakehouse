@@ -3,8 +3,9 @@ Dagster sensors — monitors pipeline runs and sends email alerts on failure.
 Monitors: velib_pipeline_job, velib_cleanup_job
 """
 import os
-import requests
+
 import dagster as dg
+import requests
 
 
 def send_failure_email(run_id: str, job_name: str, error: str) -> None:
