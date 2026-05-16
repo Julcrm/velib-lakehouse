@@ -5,17 +5,19 @@ WORKDIR /opt/dagster/app
 ENV DAGSTER_HOME=/opt/dagster/dagster_home
 RUN mkdir -p /opt/dagster/dagster_home
 
-# Installe uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Copie les fichiers de dépendances en premier pour le cache Docker
-COPY ../../pyproject.toml uv.lock ./
-
-# Installe les dépendances sans les dev dependencies
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-COPY ../../dagster.yaml $DAGSTER_HOME/dagster.yaml
-COPY ../.. .
+# dbt deps — télécharge dbt_utils pendant le build
+COPY dbt/ /opt/dagster/app/dbt/
+WORKDIR /opt/dagster/app/dbt
+RUN uv run dbt deps --profiles-dir . --no-partial-parse 2>/dev/null || uv run dbt deps
+
+WORKDIR /opt/dagster/app
+COPY dagster.yaml $DAGSTER_HOME/dagster.yaml
+COPY . .
 
 EXPOSE 4000
 

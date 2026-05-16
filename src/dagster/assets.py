@@ -5,7 +5,6 @@ Les assets ne contiennent pas de logique métier — ils délèguent à producer
 """
 import subprocess
 import dagster as dg
-from loguru import logger
 from src.ingestion.producer import run as run_producer
 from src.maintenance.cleaner import run_cleanup
 from src.resources.minio import MinioResource
@@ -19,11 +18,10 @@ def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.
     context.log.info(f"Ingestion terminée → {path}")
     return dg.MaterializeResult(metadata={"path": path})
 
-
 @dg.asset(
     group_name="silver",
     deps=[velib_bronze],
-    description="Transformation dbt : Bronze → Silver.",
+    description="Transformation et Tests dbt : Bronze → Silver.",
 )
 def velib_silver(context: dg.AssetExecutionContext) -> None:
     result = subprocess.run(
@@ -32,11 +30,16 @@ def velib_silver(context: dg.AssetExecutionContext) -> None:
         text=True,
         cwd="/opt/dagster/app/dbt",
     )
+
+    if result.stdout:
+        context.log.info(result.stdout)
+
     if result.returncode != 0:
-        context.log.error(result.stderr)
-        raise RuntimeError("dbt run (silver) a échoué.")
-    context.log.info(result.stdout)
-    context.log.info("dbt silver terminé.")
+        if result.stderr:
+            context.log.error(result.stderr)
+        raise RuntimeError("Échec du dbt build (Silver) : la table n'a pas pu être créée ou les tests ont échoué.")
+
+    context.log.info("dbt silver build (run + tests) terminé avec succès.")
 
 
 @dg.asset(

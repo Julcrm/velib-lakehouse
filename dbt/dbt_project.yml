@@ -11,3 +11,7 @@ models:
       +materialized: external
     gold:
       +materialized: external
+
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: [ 'dbt_utils', 'dbt' ]

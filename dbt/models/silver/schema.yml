@@ -2,35 +2,80 @@ version: 2
 
 models:
   - name: velib_silver
-    description: "Données Vélib nettoyées avec taux d'utilisation par station"
+    description: >
+      Données Vélib nettoyées, enrichies avec calcul de deltas et de vitesse de vidage.
+      Ce modèle transforme les snapshots bruts (Bronze) en données prêtes pour l'analyse (Gold).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [station_code, last_reported]
+
     columns:
       - name: station_code
-        description: "Identifiant unique de la station"
+        description: "Identifiant unique de la station (clé primaire logique)"
         tests:
           - not_null
+
       - name: station_name
-        description: "Nom de la station"
+        description: "Nom officiel de la station"
         tests:
           - not_null
+
       - name: bikes_available
-        description: "Nombre de vélos disponibles"
+        description: "Nombre total de vélos disponibles"
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+
+      - name: capacity
+        description: "Capacité totale de la station (bornes physiques)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              inclusive: true
+              severity: warn
+
       - name: last_reported
-        description: "Timestamp de la dernière mise à jour de la station"
+        description: "Horodatage de la dernière activité transmise par la station"
         tests:
           - not_null
+          - dbt_utils.recency:
+              field: last_reported
+              datepart: hour
+              interval: 1
+              severity: warn
+
       - name: is_renting
-        description: "La station peut louer des vélos"
+        description: "Booléen : la station autorise-t-elle la location ?"
         tests:
           - not_null
           - accepted_values:
               values: [true, false]
+
       - name: is_returning
-        description: "La station peut recevoir des vélos"
+        description: "Booléen : la station autorise-t-elle le dépôt ?"
         tests:
           - not_null
           - accepted_values:
               values: [true, false]
+
       - name: depletion_rate_per_minute
-        description: "Vélos perdus/gagnés par minute — négatif = vidage, positif = remplissage"
+        description: >
+          Vitesse de vidage/remplissage. 
+          Note : Peut être NULL pour le premier snapshot d'une station.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -50
+              max_value: 50
+              severity: warn
+              description: "Alerte en cas de valeur aberrante (ex: saut de données API)"
+
+      - name: bikes_delta
+        description: "Différence de vélos par rapport au snapshot précédent"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -100
+              max_value: 100
+              severity: warn

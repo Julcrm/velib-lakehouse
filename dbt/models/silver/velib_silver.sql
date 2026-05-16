@@ -41,6 +41,8 @@ cleaned AS (
 
     FROM source
     WHERE is_installed = 'OUI'
+    AND stationcode IS NOT NULL
+    AND name IS NOT NULL
 ),
 
 with_delta AS (
