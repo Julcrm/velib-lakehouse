@@ -1,5 +1,14 @@
 version: "3.8"
 
+# =============================================================================
+# Vélib Lakehouse — Docker Compose
+# Services:
+#   - velib-lakehouse: Dagster gRPC code server (port 4000, internal)
+#   - velib-api: FastAPI serving layer (port 8000, public)
+# Network: coolify (external)
+# =============================================================================
+
+# Dagster gRPC code server — serves pipeline assets to dagster-workspace
 services:
   velib-lakehouse:
     build:
@@ -22,6 +31,7 @@ services:
       - coolify
     restart: always
 
+# FastAPI REST API — exposes pipeline metrics and Vélib insights
   velib-api:
     build:
       context: .

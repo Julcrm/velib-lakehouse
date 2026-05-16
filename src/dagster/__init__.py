@@ -1,11 +1,10 @@
 """
-Point d'entrée Dagster pour le projet Vélib Lakehouse.
-Expose les assets via un serveur gRPC sur le port 4000.
+Dagster entry point for the Vélib Lakehouse project.
+Exposes assets via a gRPC server on port 4000.
 """
 import os
 
 from dagster import Definitions
-
 from src.dagster.assets import velib_bronze, velib_gold, velib_silver
 from src.resources.minio import MinioResource
 

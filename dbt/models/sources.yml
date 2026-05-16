@@ -5,7 +5,7 @@ sources:
     schema: main
     tables:
       - name: velib_bronze
-        description: "Snapshots bruts des stations Vélib depuis l'API Open Data Paris"
+        description: "Raw snapshots of Vélib stations from the Paris Open Data API"
         external:
           location: "s3://velib-lakehouse/bronze/velib/**/*.parquet"
           options:

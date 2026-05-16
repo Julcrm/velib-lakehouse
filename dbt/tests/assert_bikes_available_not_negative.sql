@@ -1,5 +1,5 @@
--- Vérifie que bikes_available est toujours >= 0
--- Une valeur négative serait une anomalie de l'API Vélib
+-- Assert that bikes_available is never negative
+-- A negative value would indicate a data anomaly from the Vélib API
 
 SELECT station_code, station_name, bikes_available, last_reported
 FROM {{ ref('velib_silver') }}

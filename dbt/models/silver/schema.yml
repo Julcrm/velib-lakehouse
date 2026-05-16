@@ -3,22 +3,22 @@ version: 2
 models:
   - name: velib_silver
     description: >
-      Données Vélib nettoyées, enrichies avec calcul de deltas et de vitesse de vidage.
-      Ce modèle transforme les snapshots bruts (Bronze) en données prêtes pour l'analyse (Gold).
+      Cleaned and enriched Vélib data with bike delta and depletion rate calculations.
+      Transforms raw Bronze snapshots into analysis-ready data for the Gold layer.
 
     columns:
       - name: station_code
-        description: "Identifiant unique de la station"
+        description: "Unique station identifier"
         tests:
           - not_null
 
       - name: station_name
-        description: "Nom officiel de la station"
+        description: "Official station name"
         tests:
           - not_null
 
       - name: bikes_available
-        description: "Nombre total de vélos disponibles"
+        description: "Total number of bikes currently available at the station"
         tests:
           - not_null
           - dbt_utils.accepted_range:
@@ -26,7 +26,7 @@ models:
                 min_value: 0
 
       - name: capacity
-        description: "Capacité totale de la station"
+        description: "Total docking capacity of the station"
         tests:
           - not_null
           - dbt_utils.accepted_range:
@@ -36,26 +36,26 @@ models:
                 severity: warn
 
       - name: last_reported
-        description: "Horodatage de la dernière activité de la station"
+        description: "Timestamp of the last station activity report"
         tests:
           - not_null
 
       - name: is_renting
-        description: "La station autorise-t-elle la location ?"
+        description: "Whether the station is currently accepting bike rentals"
         tests:
           - not_null
           - accepted_values:
               values: [true, false]
 
       - name: is_returning
-        description: "La station autorise-t-elle le dépôt ?"
+        description: "Whether the station is currently accepting bike returns"
         tests:
           - not_null
           - accepted_values:
               values: [true, false]
 
       - name: depletion_rate_per_minute
-        description: "Vitesse de vidage/remplissage — NULL pour le premier snapshot"
+        description: "Depletion/refill speed in bikes per minute — NULL for the first snapshot"
         tests:
           - dbt_utils.accepted_range:
               arguments:
@@ -65,7 +65,7 @@ models:
                 severity: warn
 
       - name: bikes_delta
-        description: "Différence de vélos par rapport au snapshot précédent — NULL pour le premier snapshot"
+        description: "Change in bike count since the previous snapshot — NULL for the first snapshot"
         tests:
           - dbt_utils.accepted_range:
               arguments:

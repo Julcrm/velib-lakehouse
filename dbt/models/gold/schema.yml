@@ -2,8 +2,8 @@ version: 2
 
 models:
   - name: velib_stations_at_risk
-    description: "Stations qui risque d'être vide dans les 30 prochaines minutes"
+    description: "Stations predicted to run out of bikes within the next 30 minutes"
   - name: velib_stats_arrondissement
-    description: "Statistiques agrégées par arrondissement"
+    description: "Aggregated bike availability statistics grouped by arrondissement"
   - name: velib_stations_empty_duration
-    description: "Stations actives vides depuis plus de 60 minutes sans réapprovisionnement"
+    description: "Active stations that have been empty for more than 60 minutes without restocking"

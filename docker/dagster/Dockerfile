@@ -1,3 +1,9 @@
+# =============================================================================
+# Dagster gRPC Code Server — Vélib Lakehouse
+# Exposes pipeline assets (Bronze, Silver, Gold) to dagster-workspace on port 4000.
+# Runtime: Python 3.11-slim, uv, dagster, dbt-duckdb, dbt_utils
+# =============================================================================
+
 FROM python:3.11-slim
 
 WORKDIR /opt/dagster/app

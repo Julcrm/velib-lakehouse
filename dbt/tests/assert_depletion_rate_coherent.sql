@@ -1,5 +1,5 @@
--- Vérifie que depletion_rate_per_minute est physiquement cohérent
--- Impossible de vider plus de vélos en 1 minute que la capacité totale de la station
+-- Assert that depletion_rate_per_minute is physically coherent
+-- It is impossible to lose more bikes in one minute than the station's total capacity
 
 SELECT station_code, station_name, depletion_rate_per_minute, capacity, last_reported
 FROM {{ ref('velib_silver') }}

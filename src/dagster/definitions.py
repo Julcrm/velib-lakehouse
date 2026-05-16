@@ -1,15 +1,22 @@
 """
-Point d'entrée Dagster Definitions pour le pipeline Velib Lakehouse.
+Dagster Definitions entry point for the Vélib Lakehouse pipeline.
 
-Assemble les assets (bronze / silver / gold), le schedule horaire
-et la ressource MinIO. Les variables d'environnement S3_ENDPOINT_URL,
-AWS_ACCESS_KEY_ID et AWS_SECRET_ACCESS_KEY sont lues au démarrage.
+Assembles assets (bronze / silver / gold), the recurring schedule,
+and the MinIO resource. Environment variables S3_ENDPOINT_URL,
+AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY are read at startup.
 """
 import os
-from dagster import Definitions
-from src.resources.minio import MinioResource
-from src.dagster.assets import velib_bronze, velib_silver, velib_gold, velib_cleanup, velib_schedule, velib_cleanup_schedule
 
+from dagster import Definitions
+from src.dagster.assets import (
+    velib_bronze,
+    velib_cleanup,
+    velib_cleanup_schedule,
+    velib_gold,
+    velib_schedule,
+    velib_silver,
+)
+from src.resources.minio import MinioResource
 
 defs = Definitions(
     assets=[velib_bronze, velib_silver, velib_gold, velib_cleanup],
@@ -20,5 +27,5 @@ defs = Definitions(
             access_key=os.getenv("AWS_ACCESS_KEY_ID"),
             secret_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
         )
-    }
+    },
 )

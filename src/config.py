@@ -1,10 +1,10 @@
 """
-Configuration centralisée du projet Vélib Lakehouse.
-Toutes les URLs, constantes et paramètres sont définis ici.
+Centralized configuration for the Vélib Lakehouse project.
+All URLs, constants, and parameters are defined here.
 """
 import os
 
-# --- API Vélib Open Data Paris ---
+# --- Vélib Open Data Paris API ---
 VELIB_API_URL = (
     "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/velib-disponibilite-en-temps-reel/exports/json"
 )
@@ -17,7 +17,7 @@ VELIB_HEADERS = {
     )
 }
 
-# --- Rétention des données (jours) ---
+# --- Data retention (days) ---
 BRONZE_RETENTION_DAYS = 7
 SILVER_RETENTION_DAYS = 30
 GOLD_RETENTION_DAYS = 30

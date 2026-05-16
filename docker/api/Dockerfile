@@ -1,3 +1,9 @@
+# =============================================================================
+# FastAPI Serving — Vélib Lakehouse API
+# Exposes pipeline metrics and Vélib insights via REST endpoints on port 8000.
+# Runtime: Python 3.11-slim, uv, fastapi, uvicorn, duckdb, httpx
+# =============================================================================
+
 FROM python:3.11-slim
 
 WORKDIR /opt/dagster/app

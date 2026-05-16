@@ -1,10 +1,17 @@
--- Couche Gold — stations à risque de vidage imminent
--- Une station est à risque si son taux de vidage prédit un stock nul dans moins de 30 minutes
-
 {{ config(
     materialized='external',
     location='s3://velib-lakehouse/gold/velib/velib_stations_at_risk.parquet'
 ) }}
+
+-- =============================================================================
+-- Model       : velib_stations_at_risk
+-- Description : Identifies active stations at risk of running out of bikes
+--               within the next 30 minutes, based on depletion_rate_per_minute.
+--               A station is at risk if: bikes_available > 0,
+--               depletion_rate < 0, and minutes_until_empty < 30.
+-- Source      : s3://velib-lakehouse/silver/velib/velib_silver.parquet
+-- Output      : s3://velib-lakehouse/gold/velib/velib_stations_at_risk.parquet
+-- =============================================================================
 
 WITH silver AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/silver/velib/velib_silver.parquet')

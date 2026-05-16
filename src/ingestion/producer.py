@@ -1,28 +1,29 @@
 """
-Ingestion des données Vélib depuis les APIs open data.
-Écrit les snapshots bruts sur MinIO (couche Bronze).
+Vélib data ingestion from the Paris Open Data API.
+Writes raw snapshots to MinIO as Parquet files (Bronze layer).
 """
 import json
 import os
 from datetime import datetime
+
 import pandas as pd
 import requests
 import s3fs
 from loguru import logger
+
 from src.config import BUCKET, VELIB_API_URL, VELIB_HEADERS
 
-
-# --- Fonctions génériques ---
+# --- Generic helpers ---
 
 def fetch_json(url: str, headers: dict = None, params: dict = None) -> dict | list:
-    """Appel HTTP GET générique — retourne le JSON brut."""
+    """Perform a generic HTTP GET and return the parsed JSON body."""
     response = requests.get(url, headers=headers, params=params, timeout=30)
     response.raise_for_status()
     return response.json()
 
 
 def write_parquet(df: pd.DataFrame, path: str, fs: s3fs.S3FileSystem) -> str:
-    """Écriture Parquet sur MinIO."""
+    """Write a DataFrame to a Parquet file on MinIO and return the path."""
     with fs.open(path, "wb") as f:
         df.to_parquet(f, index=False)
     logger.info(f"Written to s3://{path}")
@@ -30,7 +31,7 @@ def write_parquet(df: pd.DataFrame, path: str, fs: s3fs.S3FileSystem) -> str:
 
 
 def write_json(payload: dict, path: str, fs: s3fs.S3FileSystem) -> str:
-    """Écriture JSON sur MinIO."""
+    """Write a dict as a JSON file to MinIO and return the path."""
     with fs.open(path, "w") as f:
         json.dump(payload, f)
     logger.info(f"Written to s3://{path}")
@@ -38,7 +39,7 @@ def write_json(payload: dict, path: str, fs: s3fs.S3FileSystem) -> str:
 
 
 def _build_filesystem(fs: s3fs.S3FileSystem | None) -> s3fs.S3FileSystem:
-    """Retourne le filesystem fourni, ou en crée un depuis les variables d'env."""
+    """Return the provided filesystem, or build one from environment variables."""
     if fs is not None:
         return fs
     endpoint = os.getenv("S3_ENDPOINT_URL", "http://localhost:9000")
@@ -50,16 +51,16 @@ def _build_filesystem(fs: s3fs.S3FileSystem | None) -> s3fs.S3FileSystem:
     )
 
 
-# --- Pipeline statut stations ---
+# --- Station status pipeline ---
 
 def run(fs: s3fs.S3FileSystem | None = None) -> str:
-    """Pipeline Bronze — snapshot statut des stations Vélib."""
+    """Fetch a Vélib station snapshot and write it to the Bronze layer as Parquet."""
     filesystem = _build_filesystem(fs)
     records = fetch_json(VELIB_API_URL, headers=VELIB_HEADERS)
     df = pd.json_normalize(records)
     df["ingested_at"] = datetime.now()
 
-    # Normalise les coordonnées — l'API peut retourner les deux formats
+    # Normalise coordinates — the API may return either flat or nested format
     if "coordonnees_geo" in df.columns and "coordonnees_geo.lon" not in df.columns:
         df["coordonnees_geo.lon"] = df["coordonnees_geo"].apply(
             lambda x: x.get("lon") if isinstance(x, dict) else None
@@ -70,9 +71,10 @@ def run(fs: s3fs.S3FileSystem | None = None) -> str:
         df = df.drop(columns=["coordonnees_geo"])
 
     now = datetime.now()
-    path = f"{BUCKET}/bronze/velib/date={now.strftime('%Y-%m-%d')}/{now.strftime('%H-%M-%S')}.parquet"
+    date_part = now.strftime("%Y-%m-%d")
+    time_part = now.strftime("%H-%M-%S")
+    path = f"{BUCKET}/bronze/velib/date={date_part}/{time_part}.parquet"
     return write_parquet(df, path, filesystem)
-
 
 
 if __name__ == "__main__":

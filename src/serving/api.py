@@ -1,23 +1,29 @@
 """
-API FastAPI — Expose les métriques du pipeline Vélib Lakehouse et les insights données.
+FastAPI application — exposes Vélib Lakehouse pipeline metrics and data insights.
 
-Sécurité :
-- API Key via header X-API-Key sur tous les endpoints de données
-- HTTP Basic Auth sur /docs
+Security:
+- API Key via X-API-Key header on all data endpoints
+- HTTP Basic Auth on /docs
 """
 import os
 import secrets
 from datetime import date
+
 import duckdb
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
+
 from src.config import BUCKET
 
 # --- Configuration ---
-MINIO_ENDPOINT = os.getenv("S3_ENDPOINT_URL", "http://minio:9000").replace("https://", "").replace("http://", "")
+MINIO_ENDPOINT = (
+    os.getenv("S3_ENDPOINT_URL", "http://minio:9000")
+    .replace("https://", "")
+    .replace("http://", "")
+)
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 DAGSTER_URL = os.getenv("DAGSTER_URL")
@@ -39,22 +45,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Sécurité API Key ---
+# --- API Key security ---
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
-async def verify_api_key(key: str = Security(api_key_header)):
-    """Vérifie que le header X-API-Key est valide."""
+
+async def verify_api_key(key: str = Security(api_key_header)) -> None:
+    """Validate the X-API-Key header against the configured secret."""
     if not API_KEY or not secrets.compare_digest(key, API_KEY):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid API Key",
         )
 
-# --- Sécurité HTTP Basic Auth pour /docs ---
+
+# --- HTTP Basic Auth for /docs ---
 basic_security = HTTPBasic()
 
-def verify_docs_credentials(credentials: HTTPBasicCredentials = Depends(basic_security)):
-    """Vérifie les credentials pour accéder à /docs."""
+
+def verify_docs_credentials(
+    credentials: HTTPBasicCredentials = Depends(basic_security),  # noqa: B008
+) -> None:
+    """Validate HTTP Basic Auth credentials for access to /docs."""
     correct_user = secrets.compare_digest(credentials.username, DOCS_USER)
     correct_pass = secrets.compare_digest(credentials.password, DOCS_PASSWORD or "")
     if not (correct_user and correct_pass):
@@ -64,16 +75,20 @@ def verify_docs_credentials(credentials: HTTPBasicCredentials = Depends(basic_se
             headers={"WWW-Authenticate": "Basic"},
         )
 
-# --- Route /docs protégée ---
+
+# --- Protected /docs route ---
 @app.get("/docs", include_in_schema=False)
-async def custom_swagger(credentials: HTTPBasicCredentials = Depends(verify_docs_credentials)):
+async def custom_swagger(
+    credentials: HTTPBasicCredentials = Depends(verify_docs_credentials),  # noqa: B008
+) -> None:
+    """Serve the Swagger UI after successful Basic Auth validation."""
     return get_swagger_ui_html(openapi_url="/openapi.json", title="Vélib Lakehouse API")
 
 
-# --- Helpers DuckDB et Dagster ---
+# --- DuckDB and Dagster helpers ---
 
 def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
-    """Crée une connexion DuckDB configurée pour lire depuis MinIO."""
+    """Create an in-memory DuckDB connection configured to read from MinIO."""
     con = duckdb.connect(database=":memory:")
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute(f"SET s3_endpoint='{MINIO_ENDPOINT}';")
@@ -85,7 +100,7 @@ def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
 
 
 async def query_dagster_graphql(query: str) -> dict:
-    """Appelle l'API GraphQL de Dagster et retourne la réponse."""
+    """Post a GraphQL query to the Dagster API and return the response body."""
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.post(
             f"{DAGSTER_URL}/graphql",
@@ -100,8 +115,8 @@ async def query_dagster_graphql(query: str) -> dict:
 # =============================================================================
 
 @app.get("/pipeline/status", dependencies=[Depends(verify_api_key)])
-async def get_pipeline_status():
-    """Statut de la dernière exécution par asset (Bronze / Silver / Gold)."""
+async def get_pipeline_status() -> dict:
+    """Return the status of the latest pipeline run, broken down by asset."""
     query = """
     {
       runsOrError(filter: {pipelineName: "velib_pipeline_job"}, limit: 10) {
@@ -152,12 +167,12 @@ async def get_pipeline_status():
             "assets": assets_status,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/pipeline/metrics", dependencies=[Depends(verify_api_key)])
-async def get_pipeline_metrics():
-    """Métriques du pipeline : snapshots Bronze aujourd'hui, stations ingérées."""
+async def get_pipeline_metrics() -> dict:
+    """Return pipeline metrics: Bronze snapshots ingested today and station count."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
@@ -184,7 +199,7 @@ async def get_pipeline_metrics():
             "stations_per_snapshot": stations_per_snapshot,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # =============================================================================
@@ -192,8 +207,8 @@ async def get_pipeline_metrics():
 # =============================================================================
 
 @app.get("/velib/summary", dependencies=[Depends(verify_api_key)])
-async def get_velib_summary():
-    """Métriques globales Vélib : total vélos, répartition mécanique/électrique."""
+async def get_velib_summary() -> dict:
+    """Return global Vélib metrics: total bikes, mechanical/electric breakdown."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
@@ -209,13 +224,13 @@ async def get_velib_summary():
                 ) = 1
             )
             SELECT
-                COUNT(*)                                                        AS total_stations,
-                COUNT(*) FILTER (WHERE NOT is_renting OR NOT is_returning)      AS inactive_stations,
-                COUNT(*) FILTER (WHERE bikes_available = 0 AND is_renting)      AS empty_stations,
-                SUM(bikes_available)                                            AS total_bikes,
-                SUM(bikes_mechanical)                                           AS total_mechanical,
-                SUM(bikes_electric)                                             AS total_electric,
-                SUM(docks_available)                                            AS total_docks_available
+                COUNT(*)                                          AS total_stations,
+                COUNT(*) FILTER (WHERE NOT is_renting OR NOT is_returning) AS inactive_stations,
+                COUNT(*) FILTER (WHERE bikes_available = 0 AND is_renting) AS empty_stations,
+                SUM(bikes_available)                              AS total_bikes,
+                SUM(bikes_mechanical)                             AS total_mechanical,
+                SUM(bikes_electric)                               AS total_electric,
+                SUM(docks_available)                              AS total_docks_available
             FROM latest
         """).fetchone()
 
@@ -231,12 +246,12 @@ async def get_velib_summary():
             "pct_electric": round(result[5] / result[3] * 100, 1) if result[3] else 0,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/velib/at-risk", dependencies=[Depends(verify_api_key)])
-async def get_stations_at_risk():
-    """Top stations à risque de vidage dans les 30 prochaines minutes."""
+async def get_stations_at_risk() -> dict:
+    """Return the top stations at risk of running empty within the next 30 minutes."""
     try:
         con = get_duckdb_connection()
 
@@ -268,12 +283,12 @@ async def get_stations_at_risk():
             "stations": stations,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/velib/top-depletion", dependencies=[Depends(verify_api_key)])
-async def get_top_depletion():
-    """Top 5 stations qui se vident le plus vite en ce moment."""
+async def get_top_depletion() -> dict:
+    """Return the top 5 stations currently depleting bikes the fastest."""
     try:
         con = get_duckdb_connection()
         today = date.today().isoformat()
@@ -311,11 +326,12 @@ async def get_top_depletion():
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.get("/velib/empty-duration", dependencies=[Depends(verify_api_key)])
-async def get_empty_duration():
-    """Stations vides depuis plus de 60 minutes sans réapprovisionnement."""
+async def get_empty_duration() -> dict:
+    """Return stations that have been empty for more than 60 minutes without restocking."""
     try:
         con = get_duckdb_connection()
         results = con.execute(f"""
@@ -339,13 +355,13 @@ async def get_empty_duration():
                     "last_seen_with_bikes": str(r[3]) if r[3] else None,
                 }
                 for r in results
-            ]
+            ],
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health")
-async def health():
-    """Endpoint de santé — pas d'auth requise."""
+async def health() -> dict:
+    """Health check endpoint — no authentication required."""
     return {"status": "ok"}

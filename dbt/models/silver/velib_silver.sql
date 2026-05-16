@@ -1,10 +1,17 @@
--- Couche Silver — nettoyage, typage et enrichissement des données Vélib
--- Calcule la vitesse de vidage par station via window function LAG
-
 {{ config(
     materialized='external',
     location='s3://velib-lakehouse/silver/velib/velib_silver.parquet'
 ) }}
+
+-- =============================================================================
+-- Model       : velib_silver
+-- Description : Cleans and enriches raw Vélib snapshots from the Bronze layer.
+--               Filters out ghost stations (NULL stationcode, zero capacity).
+--               Computes bikes_delta and depletion_rate_per_minute using LAG
+--               window function partitioned by station_code.
+-- Source      : s3://velib-lakehouse/bronze/velib/**/*.parquet
+-- Output      : s3://velib-lakehouse/silver/velib/velib_silver.parquet
+-- =============================================================================
 
 WITH source AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/bronze/velib/**/*.parquet')
@@ -12,25 +19,25 @@ WITH source AS (
 
 cleaned AS (
     SELECT
-        -- Identifiants
+        -- Identifiers
         stationcode                                     AS station_code,
         name                                            AS station_name,
         nom_arrondissement_communes                     AS arrondissement,
         code_insee_commune                              AS code_insee,
 
-        -- Disponibilité
+        -- Availability
         numbikesavailable                               AS bikes_available,
         mechanical                                      AS bikes_mechanical,
         ebike                                           AS bikes_electric,
         numdocksavailable                               AS docks_available,
         capacity,
 
-        -- Statuts — conversion OUI/NON → boolean
+        -- Status — convert OUI/NON strings to booleans
         (is_installed = 'OUI')                          AS is_installed,
         (is_renting = 'OUI')                            AS is_renting,
         (is_returning = 'OUI')                          AS is_returning,
 
-        -- Coordonnées
+        -- Coordinates
         "coordonnees_geo.lat"                           AS latitude,
         "coordonnees_geo.lon"                           AS longitude,
 
@@ -49,19 +56,19 @@ cleaned AS (
 with_delta AS (
     SELECT
         *,
-        -- Snapshot précédent par station
+        -- Previous snapshot bike count for this station
         LAG(bikes_available) OVER (
             PARTITION BY station_code
             ORDER BY last_reported
         )                                               AS prev_bikes_available,
 
-        -- Delta de vélos entre deux snapshots
+        -- Bike count change since the previous snapshot
         bikes_available - LAG(bikes_available) OVER (
             PARTITION BY station_code
             ORDER BY last_reported
         )                                               AS bikes_delta,
 
-        -- Durée en minutes entre deux snapshots
+        -- Minutes elapsed since the previous snapshot
         DATEDIFF('minute',
             LAG(last_reported) OVER (
                 PARTITION BY station_code
@@ -76,7 +83,7 @@ with_delta AS (
 final AS (
     SELECT
         *,
-        -- Vitesse de vidage : vélos perdus par minute (négatif = vidage, positif = remplissage)
+        -- Depletion rate: bikes lost per minute (negative = depleting, positive = refilling)
         CASE
             WHEN minutes_since_last_snapshot > 0
             THEN ROUND(

@@ -1,10 +1,16 @@
--- Stations actives vides depuis plus de 60 minutes sans réapprovisionnement
-
 {{ config(
     materialized='external',
     location='s3://velib-lakehouse/gold/velib/velib_stations_empty_duration.parquet'
 ) }}
 
+-- =============================================================================
+-- Model       : velib_stations_empty_duration
+-- Description : Identifies active stations that have been empty for more than
+--               60 minutes without any bike return. Excludes inactive stations
+--               (is_renting = false). Ordered by minutes_empty DESC.
+-- Source      : s3://velib-lakehouse/silver/velib/velib_silver.parquet
+-- Output      : s3://velib-lakehouse/gold/velib/velib_stations_empty_duration.parquet
+-- =============================================================================
 
 WITH silver AS (
     SELECT * FROM read_parquet('s3://velib-lakehouse/silver/velib/velib_silver.parquet')
