@@ -60,6 +60,15 @@ def run(fs: s3fs.S3FileSystem | None = None) -> str:
     df = pd.json_normalize(records)
     df["ingested_at"] = datetime.now()
 
+    # Cast known string columns to pd.StringDtype
+    _STRING_COLS = [
+        "stationcode", "name", "nom_arrondissement_communes", "code_insee_commune",
+        "is_installed", "is_renting", "is_returning", "duedate",
+    ]
+    for col in _STRING_COLS:
+        if col in df.columns:
+            df[col] = df[col].astype(pd.StringDtype())
+
     # Normalise coordinates — the API may return either flat or nested format
     if "coordonnees_geo" in df.columns and "coordonnees_geo.lon" not in df.columns:
         df["coordonnees_geo.lon"] = df["coordonnees_geo"].apply(

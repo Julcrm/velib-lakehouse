@@ -14,7 +14,11 @@
 -- =============================================================================
 
 WITH source AS (
-    SELECT * FROM read_parquet('s3://velib-lakehouse/bronze/velib/**/*.parquet')
+    SELECT * FROM read_parquet(
+        's3://velib-lakehouse/bronze/velib/**/*.parquet',
+        union_by_name=true,
+        hive_partitioning=true
+    )
 ),
 
 cleaned AS (
