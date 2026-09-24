@@ -5,8 +5,9 @@ All URLs, constants, and parameters are defined here.
 import os
 
 # --- Vélib Open Data Paris API ---
+# Served from the Opendatasoft host: opendata.paris.fr stopped resolving (NXDOMAIN) on 2026-09-23.
 VELIB_API_URL = (
-    "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/velib-disponibilite-en-temps-reel/exports/json"
+    "https://parisdata.opendatasoft.com/api/explore/v2.1/catalog/datasets/velib-disponibilite-en-temps-reel/exports/json"
 )
 
 VELIB_HEADERS = {
