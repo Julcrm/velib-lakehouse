@@ -2,7 +2,10 @@
 Dagster assets orchestrating the Vélib Lakehouse pipeline.
 Layers: Bronze (ingestion) → Silver (dbt) → Gold (DuckDB serving).
 Assets contain no business logic — they delegate to producer.py and cleaner.py.
+Keys are `velib/<layer>/<name>`: the Dagster catalog is shared with bluesky-streamhouse,
+each project keeps its own folder.
 """
+
 import subprocess
 
 import dagster as dg
@@ -10,8 +13,14 @@ from src.ingestion.producer import run as run_producer
 from src.maintenance.cleaner import run_cleanup
 from src.resources.minio import MinioResource
 
+ASSET_PREFIX = "velib"
 
-@dg.asset(group_name="bronze", description="Raw Vélib station snapshot written to MinIO Bronze.")
+
+@dg.asset(
+    group_name="bronze",
+    key_prefix=[ASSET_PREFIX, "bronze"],
+    description="Raw Vélib station snapshot written to MinIO Bronze.",
+)
 def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.MaterializeResult:
     """Step 1 — Ingestion: call the Vélib API and write a Parquet snapshot to MinIO Bronze."""
     fs = minio.get_filesystem()
@@ -22,6 +31,7 @@ def velib_bronze(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.
 
 @dg.asset(
     group_name="silver",
+    key_prefix=[ASSET_PREFIX, "silver"],
     deps=[velib_bronze],
     description="dbt build (run + tests): Bronze → Silver.",
 )
@@ -49,6 +59,7 @@ def velib_silver(context: dg.AssetExecutionContext) -> None:
 
 @dg.asset(
     group_name="gold",
+    key_prefix=[ASSET_PREFIX, "gold"],
     deps=[velib_silver],
     description="dbt aggregation: Silver → Gold.",
 )
@@ -69,6 +80,7 @@ def velib_gold(context: dg.AssetExecutionContext) -> None:
 
 @dg.asset(
     group_name="maintenance",
+    key_prefix=[ASSET_PREFIX, "maintenance"],
     description="Delete expired files from MinIO — Bronze 7 days, Silver/Gold 30 days.",
 )
 def velib_cleanup(context: dg.AssetExecutionContext, minio: MinioResource) -> dg.MaterializeResult:
@@ -86,6 +98,7 @@ def velib_cleanup(context: dg.AssetExecutionContext, minio: MinioResource) -> dg
 
 
 # --- Schedules ---
+
 
 @dg.schedule(
     cron_schedule="*/10 * * * *",
