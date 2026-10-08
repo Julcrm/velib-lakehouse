@@ -89,7 +89,9 @@ async def custom_swagger(
 
 def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
     """Create an in-memory DuckDB connection configured to read from MinIO."""
-    con = duckdb.connect(database=":memory:")
+    # Bounded inside the API container (768 MB): DuckDB would otherwise size itself on
+    # the host's RAM and cores (shared VPS)
+    con = duckdb.connect(database=":memory:", config={"memory_limit": "384MB", "threads": 2})
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute(f"SET s3_endpoint='{MINIO_ENDPOINT}';")
     con.execute(f"SET s3_access_key_id='{AWS_ACCESS_KEY}';")
