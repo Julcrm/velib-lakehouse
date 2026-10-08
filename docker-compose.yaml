@@ -35,6 +35,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          # Peak 1.68 GiB measured (2026-10-08): Dagster runs execute here, dbt and DuckDB
+          # included (DuckDB memory_limit 1 GB in dbt/profiles.yml). Shared VPS: a leak must
+          # not starve the other projects
+          memory: 2G
     networks:
       - coolify
     restart: always
@@ -60,6 +67,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 768M  # peak 242 MiB measured (2026-10-08), DuckDB capped at 384 MB
     networks:
       - coolify
     restart: always
