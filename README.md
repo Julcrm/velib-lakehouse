@@ -6,12 +6,16 @@ A production-grade data lakehouse pipeline deployed on a VPS — real-time inges
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    api["Vélib API (OpenData Paris)"] --> bronze[("Bronze<br/>raw Parquet snapshots on Garage")]
-    bronze --> silver[("Silver<br/>dbt + DuckDB: cleaning, window functions")]
-    silver --> gold[("Gold<br/>dbt + DuckDB: alerts, aggregations")]
-    gold --> fastapi["FastAPI<br/>pipeline metrics and Vélib insights"]
+```
+Vélib API (OpenData Paris)
+        ↓
+Bronze — raw Parquet snapshots on Garage
+        ↓
+Silver — dbt + DuckDB (cleaning, window functions)
+        ↓
+Gold   — dbt + DuckDB (alerts, aggregations)
+        ↓
+FastAPI — pipeline metrics and Vélib insights
 ```
 
 Orchestrated by **Dagster** on a 10-minute schedule.
