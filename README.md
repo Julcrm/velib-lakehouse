@@ -8,7 +8,7 @@ A production-grade data lakehouse pipeline deployed on a VPS — real-time inges
 
 ```mermaid
 flowchart TD
-    api["Vélib API (OpenData Paris)"] --> bronze[("Bronze<br/>raw Parquet snapshots on MinIO")]
+    api["Vélib API (OpenData Paris)"] --> bronze[("Bronze<br/>raw Parquet snapshots on Garage")]
     bronze --> silver[("Silver<br/>dbt + DuckDB: cleaning, window functions")]
     silver --> gold[("Gold<br/>dbt + DuckDB: alerts, aggregations")]
     gold --> fastapi["FastAPI<br/>pipeline metrics and Vélib insights"]
@@ -22,7 +22,7 @@ Orchestrated by **Dagster** on a 10-minute schedule.
 |---|---|
 | Orchestration | Dagster |
 | Ingestion | Python, requests |
-| Storage | MinIO (S3-compatible) |
+| Storage | Garage (S3-compatible) |
 | Transformation | dbt + DuckDB |
 | Serving | FastAPI |
 | Packaging | uv |
@@ -39,7 +39,7 @@ src/
 │   ├── assets.py               # Dagster assets (Bronze, Silver, Gold)
 │   └── definitions.py          # Dagster Definitions wiring
 ├── resources/
-│   └── minio.py                # Shared MinIO resource (s3fs)
+│   └── minio.py                # Shared S3 resource for Garage (s3fs)
 ├── maintenance/
 │   └── cleaner.py              # Retention cleanup — Bronze 7d / Silver+Gold 30d
 └── serving/
