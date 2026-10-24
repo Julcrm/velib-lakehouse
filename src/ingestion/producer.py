@@ -4,6 +4,7 @@ Writes raw snapshots to MinIO as Parquet files (Bronze layer).
 """
 import json
 import os
+import time
 from datetime import datetime
 
 import pandas as pd
@@ -15,11 +16,27 @@ from src.config import BUCKET, VELIB_API_URL, VELIB_HEADERS
 
 # --- Generic helpers ---
 
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_S = 5
+
+
 def fetch_json(url: str, headers: dict = None, params: dict = None) -> dict | list:
-    """Perform a generic HTTP GET and return the parsed JSON body."""
-    response = requests.get(url, headers=headers, params=params, timeout=30)
-    response.raise_for_status()
-    return response.json()
+    """Perform a generic HTTP GET and return the parsed JSON body.
+
+    Retries transient failures: the Open Data API sometimes answers 200 with a body
+    that is not JSON, or a 5xx. A 4xx is raised at once.
+    """
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            status = getattr(e.response, "status_code", None)
+            if (status is not None and status < 500) or attempt == FETCH_ATTEMPTS:
+                raise
+            logger.warning(f"Fetch attempt {attempt}/{FETCH_ATTEMPTS} failed: {e}; retrying")
+            time.sleep(FETCH_BACKOFF_S * attempt)
 
 
 def write_parquet(df: pd.DataFrame, path: str, fs: s3fs.S3FileSystem) -> str:
